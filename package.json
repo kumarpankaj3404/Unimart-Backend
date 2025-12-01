@@ -1,0 +1,29 @@
+{
+  "name": "unimart-backend",
+  "version": "1.0.0",
+  "description": "Backend for Real-Time Order Tracking and Delivery Updates Portal",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon -r dotenv/config src/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kumarpankaj3404/Unimart-Backend.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kumarpankaj3404/Unimart-Backend/issues"
+  },
+  "homepage": "https://github.com/kumarpankaj3404/Unimart-Backend#readme",
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^9.0.0",
+    "nodemon": "^3.1.11"
+  }
+}
