@@ -4,3 +4,5 @@ const asyncHandler = (reqHandler) => {
         .catch((err) => next(err));
     }
 }
+
+export default asyncHandler;
