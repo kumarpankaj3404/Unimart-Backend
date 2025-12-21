@@ -1,11 +1,12 @@
-import {Router} from 'express';
+import { Router } from 'express';
 import { verifyJWT } from '../middleware/auth.middleware.js';
 import checkRole from '../middleware/checkRole.middleware.js';
-import{
+import {
     createNewOrder,
     changeStatus,
     showAllOrders,
-    showOrderByUser
+    showOrderByUser,
+    getMyDeliveries
 } from "../controllers/order.controllers.js";
 
 const router = Router();
@@ -16,6 +17,7 @@ router.route('/user-orders').get(verifyJWT, showOrderByUser);
 
 //ADMIN ROUTES
 router.route('/all-orders').get(verifyJWT, checkRole(['admin']), showAllOrders);
-router.route('/change-status').patch(verifyJWT, checkRole(['admin']), changeStatus);
+router.route('/change-status').patch(verifyJWT, checkRole(['delivery']), changeStatus);
+router.route('/my-deliveries').get(verifyJWT, checkRole(['delivery']), getMyDeliveries);
 
 export default router;

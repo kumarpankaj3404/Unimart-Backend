@@ -1,24 +1,24 @@
-import mongoose,{ Schema } from "mongoose";
+import mongoose, { Schema } from "mongoose";
 
 const productSchema = new Schema({
-    product:{
-        type: String,
-        required: true
-    },
-    thumbnail:{
-        type: String
-    },
-    quantity:{
-        type: Number,
-        required: true,
-        min: [1, "Quantity can not be less than 1"]
-    },
-    price:{
-        type: Number,
-        required: true,
-        min: [0, "Price can not be negative"]
-    }
-},{id: false});
+  product: {
+    type: String,
+    required: true
+  },
+  thumbnail: {
+    type: String
+  },
+  quantity: {
+    type: Number,
+    required: true,
+    min: [1, "Quantity can not be less than 1"]
+  },
+  price: {
+    type: Number,
+    required: true,
+    min: [0, "Price can not be negative"]
+  }
+}, { id: false });
 
 const counterSchema = new Schema({
   id: { type: String, required: true, unique: true }, // e.g., "orderNumber"
@@ -28,36 +28,50 @@ const counterSchema = new Schema({
 const Counter = mongoose.model("Counter", counterSchema);
 
 const orderSchema = new Schema({
-    products: [productSchema],
-    totalAmount:{
-        type: Number,
-        required: true,
-        min: [0, "Total amount can not be negative"]
+  products: [productSchema],
+  totalAmount: {
+    type: Number,
+    required: true,
+    min: [0, "Total amount can not be negative"]
+  },
+  orderBy: {
+    type: Schema.Types.ObjectId,
+    ref: "User",
+    required: true
+  },
+  deliveredBy: {
+    type: Schema.Types.ObjectId,
+    ref: "User"
+  },
+  status: {
+    type: String,
+    enum: ["pending", "processed", "shipped", "delivered", "cancelled"],
+    default: "pending"
+  },
+  orderNumber: {
+    type: String,
+    unique: true
+  },
+  payment: {
+    type: String,
+    enum: ["online", "cod"],
+    required: true
+  },
+  address: {
+    fullAddress: {
+      type: String,
+      required: true
     },
-    orderBy:{
-        type: Schema.Types.ObjectId,
-        ref: "User",
-        required: true
+    lat: {
+      type: Number,
+      required: true
     },
-    deliveredBy:{
-        type: Schema.Types.ObjectId,
-        ref: "User"
-    },
-    status:{
-        type: String,
-        enum: ["pending", "processed", "shipped", "delivered", "cancelled"],
-        default: "pending"
-    },
-    orderNumber:{
-        type: String,
-        unique: true
-    },
-    payment:{
-        type: String,
-        enum: ["online","cod"],
-        required: true
+    lng: {
+      type: Number,
+      required: true
     }
-},{timestamps: true});
+  }
+}, { timestamps: true });
 
 orderSchema.pre("save", async function () {
   if (!this.orderNumber) {

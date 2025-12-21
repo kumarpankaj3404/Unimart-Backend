@@ -4,6 +4,7 @@ import {ApiError} from '../utils/ApiError.js';
 import {ApiResponse} from '../utils/ApiResponse.js';
 import {sendEmail} from '../utils/Mailer.js';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 
 const generateAccessAndRefreshToken = async(userId) =>{
     try {
@@ -65,7 +66,11 @@ const registerUser = asyncHandler(async (req, res) => {
     .cookie('refreshToken', refreshToken, options)
     .cookie('accessToken', accessToken, options)
     .json(
-        new ApiResponse(201, userCreated, "User registered successfully")
+        new ApiResponse(201, {
+            ...userCreated.toObject ? userCreated.toObject() : userCreated, 
+            accessToken, 
+            refreshToken
+        }, "User registered successfully")
     );
 
 })
@@ -104,7 +109,11 @@ const loginUser = asyncHandler(async (req, res) => {
     .cookie('refreshToken', refreshToken, options)
     .cookie('accessToken', accessToken, options)
     .json(
-        new ApiResponse(200,userData, "User logged in successfully")
+        new ApiResponse(200, {
+            ...userData.toObject ? userData.toObject() : userData, 
+            accessToken, 
+            refreshToken
+        }, "User logged in successfully")
     )
 })
 
@@ -198,13 +207,126 @@ const verifyOtp = asyncHandler(async (req, res) => {
     .json({ message: "Email verified successfully" });
 });
 
+const addFavItem = asyncHandler(async (req, res) => {
+    // 1. Extract product details directly from req.body
+    const { product, thumbnail, price } = req.body;
+
+    // 2. Validate required fields
+    if (!product || !price) {
+        throw new ApiError(400, "Product name and price are required");
+    }
+
+    // 3. Create the item object
+    const newItem = { product, thumbnail, price };
+
+    // 4. Use $addToSet to add valid item only if it doesn't already exist
+    const user = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $addToSet: { favItems: newItem } 
+        },
+        { new: true } // Return the updated doc
+    );
+
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200,{
+                favItems: user.favItems,
+                name: user.name
+            }, "Favorite item added successfully")
+        );
+});
+
+// Add this new function to your existing exports
+const updateUserProfile = asyncHandler(async (req, res) => {
+    // 1. Extract fields
+    const { name, email, number, address, lat, lng } = req.body;
+
+    // 2. Find User
+    const user = await User.findById(req.user._id);
+    if (!user) throw new ApiError(404, "User not found");
+
+    // 3. Update Basic Info
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (number) user.number = number;
+
+    // 4. Update GeoJSON (Active Location for Driver)
+    if (lat && lng) {
+        user.location = {
+            type: "Point",
+            coordinates: [parseFloat(lng), parseFloat(lat)]
+        };
+    }
+
+    // 5. Add New Address to List (If address string is provided)
+    if (address) {
+        // We push a NEW object into the array
+        user.address.push({
+            fullAddress: address,
+            label: "Home", // You can pass this from frontend later if you want
+            coordinates: { 
+                lat: lat || 0, 
+                lng: lng || 0 
+            }
+        });
+    }
+
+    // 6. Save
+    const updatedUser = await user.save({ validateBeforeSave: false });
+    
+    // 7. Return updated data
+    const userResponse = await User.findById(updatedUser._id).select("-password -refreshToken");
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, userResponse, "Profile & Address updated successfully")
+        );
+});
+
+// server/controllers/userController.js
+
+const removeFromFavorites = asyncHandler(async (req, res) => {
+    const { productId } = req.body; // This 'productId' is actually the item's _id
+
+    if (!productId) {
+        throw new ApiError(400, "Product ID is required");
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user._id, // Use the ID from the validated token (safer)
+        { 
+            // FIX: Target 'favItems' (matches Model) and pull by '_id'
+            $pull: { favItems: { _id: new mongoose.Types.ObjectId(productId) } } 
+        },
+        { new: true } // Return updated doc
+    ).select("-password");
+
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, user, "Item removed from favorites")
+        );
+});
 
 
-
-export{
+export {
     registerUser,
     loginUser,
     logoutUser,
     sendOtp,
-    verifyOtp
-}
+    verifyOtp,
+    addFavItem,
+    updateUserProfile,
+    removeFromFavorites
+};
