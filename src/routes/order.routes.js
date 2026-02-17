@@ -6,7 +6,8 @@ import {
     changeStatus,
     showAllOrders,
     showOrderByUser,
-    getMyDeliveries
+    getMyDeliveries,
+    getAvailableOrders
 } from "../controllers/order.controllers.js";
 
 const router = Router();
@@ -14,6 +15,9 @@ const router = Router();
 //SECURE ROUTES 
 router.route('/create').post(verifyJWT, createNewOrder);
 router.route('/user-orders').get(verifyJWT, showOrderByUser);
+
+// DELIVERY ROUTES
+router.route('/available').get(verifyJWT, checkRole(['delivery']), getAvailableOrders);
 
 //ADMIN ROUTES
 router.route('/all-orders').get(verifyJWT, checkRole(['admin']), showAllOrders);

@@ -135,12 +135,26 @@ const getMyDeliveries = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, orders, "My deliveries fetched"));
 });
 
+const getAvailableOrders = asyncHandler(async (req, res) => {
+    // Find orders that are pending (waiting for delivery partner)
+    const orders = await Order.find({
+        status: "pending"
+    })
+        .populate("orderBy", "name address")
+        .sort({ createdAt: -1 });
 
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, orders, "Available orders fetched successfully")
+        );
+});
 
 export {
     createNewOrder,
     changeStatus,
     showAllOrders,
     showOrderByUser,
-    getMyDeliveries
+    getMyDeliveries,
+    getAvailableOrders
 }
