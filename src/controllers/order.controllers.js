@@ -150,11 +150,45 @@ const getAvailableOrders = asyncHandler(async (req, res) => {
         );
 });
 
+const acceptOrder = asyncHandler(async (req, res) => {
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+        throw new ApiError(404, "Order not found");
+    }
+
+    if (order.status !== "pending") {
+        throw new ApiError(400, "Order is not available for acceptance");
+    }
+
+    order.deliveredBy = req.user._id;
+    order.status = "processed";
+    await order.save();
+
+    // Notify the customer that driver is assigned
+    const io = req.app.get("io");
+    if (order.orderBy) {
+        io.to(order.orderBy.toString()).emit("ORDER_UPDATED", {
+            ...order.toObject(),
+            status: "processed" 
+        });
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, order, "Order accepted successfully")
+        );
+});
+
 export {
     createNewOrder,
     changeStatus,
     showAllOrders,
     showOrderByUser,
     getMyDeliveries,
-    getAvailableOrders
+    getAvailableOrders,
+    acceptOrder
 }

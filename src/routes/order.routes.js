@@ -7,7 +7,8 @@ import {
     showAllOrders,
     showOrderByUser,
     getMyDeliveries,
-    getAvailableOrders
+    getAvailableOrders,
+    acceptOrder
 } from "../controllers/order.controllers.js";
 
 const router = Router();
@@ -18,6 +19,7 @@ router.route('/user-orders').get(verifyJWT, showOrderByUser);
 
 // DELIVERY ROUTES
 router.route('/available').get(verifyJWT, checkRole(['delivery']), getAvailableOrders);
+router.route('/accept/:orderId').patch(verifyJWT, checkRole(['delivery']), acceptOrder);
 
 //ADMIN ROUTES
 router.route('/all-orders').get(verifyJWT, checkRole(['admin']), showAllOrders);

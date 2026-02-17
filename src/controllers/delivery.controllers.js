@@ -27,14 +27,21 @@ const markOrderDelivered = asyncHandler(async (req, res) => {
   deliveryPartner.isAvailable = true;
   await deliveryPartner.save();
 
+  // Try to assign next pending order
   const nextOrder = await assignQueuedOrder(deliveryPartnerId);
 
   if (nextOrder) {
     const io = req.app.get("io");
+    // Notify Driver
     io.to(deliveryPartnerId.toString()).emit(
       "NEW_ORDER_ASSIGNED",
       nextOrder
     );
+     // Notify Customer that driver is assigned
+     io.to(nextOrder.orderBy.toString()).emit(
+      "NEW_DELIVERY_ASSIGNMENT",
+      nextOrder
+     );
   }
 
   return res.status(200).json(
