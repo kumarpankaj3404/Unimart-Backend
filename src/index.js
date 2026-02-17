@@ -10,16 +10,16 @@ dotenv.config({
 
 const PORT = process.env.PORT || 8000;
 
-// Create HTTP server
+
 const server = http.createServer(app);
 
-// Initialize Socket.IO
+
 const io = initSocket(server);
 
-// Make io available globally in app
+
 app.set("io", io);
 
-// Connect DB and start server
+
 connectDB()
   .then(() => {
     server.listen(PORT, () => {

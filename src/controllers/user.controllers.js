@@ -208,24 +208,24 @@ const verifyOtp = asyncHandler(async (req, res) => {
 });
 
 const addFavItem = asyncHandler(async (req, res) => {
-    // 1. Extract product details directly from req.body
+    
     const { product, thumbnail, price } = req.body;
 
-    // 2. Validate required fields
+    
     if (!product || !price) {
         throw new ApiError(400, "Product name and price are required");
     }
 
-    // 3. Create the item object
+    
     const newItem = { product, thumbnail, price };
 
-    // 4. Use $addToSet to add valid item only if it doesn't already exist
+    
     const user = await User.findByIdAndUpdate(
         req.user._id,
         {
             $addToSet: { favItems: newItem } 
         },
-        { new: true } // Return the updated doc
+        { new: true } 
     );
 
     if (!user) {
@@ -242,21 +242,20 @@ const addFavItem = asyncHandler(async (req, res) => {
         );
 });
 
-// Add this new function to your existing exports
+
 const updateUserProfile = asyncHandler(async (req, res) => {
-    // 1. Extract fields
+
     const { name, email, number, address, lat, lng } = req.body;
 
-    // 2. Find User
+
     const user = await User.findById(req.user._id);
     if (!user) throw new ApiError(404, "User not found");
 
-    // 3. Update Basic Info
+
     if (name) user.name = name;
     if (email) user.email = email;
     if (number) user.number = number;
 
-    // 4. Update GeoJSON (Active Location for Driver)
     if (lat && lng) {
         user.location = {
             type: "Point",
@@ -264,12 +263,10 @@ const updateUserProfile = asyncHandler(async (req, res) => {
         };
     }
 
-    // 5. Add New Address to List (If address string is provided)
     if (address) {
-        // We push a NEW object into the array
         user.address.push({
             fullAddress: address,
-            label: "Home", // You can pass this from frontend later if you want
+            label: "Home",
             coordinates: { 
                 lat: lat || 0, 
                 lng: lng || 0 
@@ -277,10 +274,10 @@ const updateUserProfile = asyncHandler(async (req, res) => {
         });
     }
 
-    // 6. Save
+
     const updatedUser = await user.save({ validateBeforeSave: false });
     
-    // 7. Return updated data
+
     const userResponse = await User.findById(updatedUser._id).select("-password -refreshToken");
 
     return res
@@ -290,22 +287,21 @@ const updateUserProfile = asyncHandler(async (req, res) => {
         );
 });
 
-// server/controllers/userController.js
+
 
 const removeFromFavorites = asyncHandler(async (req, res) => {
-    const { productId } = req.body; // This 'productId' is actually the item's _id
+    const { productId } = req.body; 
 
     if (!productId) {
         throw new ApiError(400, "Product ID is required");
     }
 
     const user = await User.findByIdAndUpdate(
-        req.user._id, // Use the ID from the validated token (safer)
+        req.user._id, 
         { 
-            // FIX: Target 'favItems' (matches Model) and pull by '_id'
             $pull: { favItems: { _id: new mongoose.Types.ObjectId(productId) } } 
         },
-        { new: true } // Return updated doc
+        { new: true }
     ).select("-password");
 
     if (!user) {

@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import mongoose, { Schema } from "mongoose";
 import bcrypt from "bcrypt";
 
-// --- 1. Create a Sub-Schema for Addresses ---
+// Sub-Schema for Address
 const addressSchema = new Schema({
     fullAddress: {
         type: String,
@@ -17,7 +17,7 @@ const addressSchema = new Schema({
         lat: Number,
         lng: Number
     }
-}, { _id: true }); // _id: true allows us to delete specific addresses later
+}, { _id: true }); // _id
 
 const productSchema = new Schema({
     product: { type: String, required: true },
@@ -57,7 +57,7 @@ const userSchema = new Schema({
         default: "user"
     },
     
-    // --- 2. Update address field to use the array schema ---
+    // Update address field
     address: {
         type: [addressSchema], 
         default: []
@@ -69,7 +69,7 @@ const userSchema = new Schema({
     otpExpiry: { type: Date },
     isAvailable: { type: Boolean, default: true },
     
-    // This 'location' is the user's CURRENT active location (for live tracking)
+    // User's CURRENT active location 
     location: {
         type: {
             type: String,

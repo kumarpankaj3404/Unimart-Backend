@@ -9,7 +9,7 @@ import checkRole from "../middleware/checkRole.middleware.js";
 
 const router = express.Router();
 
-// Delivery partner comes online / free
+//Delivery partner comes online / free
 router.post(
   "/available",
   verifyJWT,
@@ -17,7 +17,7 @@ router.post(
   setDeliveryAvailability
 );
 
-// 🔥 DELIVERY COMPLETES ORDER 
+//DELIVERY COMPLETES ORDER 
 router.post(
   "/deliver/:orderId",
   verifyJWT,

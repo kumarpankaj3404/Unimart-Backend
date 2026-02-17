@@ -4,7 +4,6 @@ import { ApiError } from "../utils/ApiError.js";
 
 export const socketAuth = async (socket, next) => {
   try {
-    // Token can come from auth object or headers
     const token =
       socket.handshake.auth?.token ||
       socket.handshake.headers?.authorization?.split(" ")[1];
@@ -26,8 +25,7 @@ export const socketAuth = async (socket, next) => {
     if (!user) {
       return next(new ApiError(404, "Socket user not found"));
     }
-
-    // Attach user to socket
+    
     socket.user = user;
 
     next();

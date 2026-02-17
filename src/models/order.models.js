@@ -87,7 +87,7 @@ orderSchema.pre("save", async function () {
         { new: true, upsert: true }
       );
     } else {
-      // same day → increment
+      // same day
       counter = await Counter.findOneAndUpdate(
         { id: "orderNumber" },
         { $inc: { seq: 1 } },

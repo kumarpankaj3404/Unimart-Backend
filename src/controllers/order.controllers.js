@@ -127,7 +127,7 @@ const showOrderByUser = asyncHandler(async (req, res) => {
 })
 
 const getMyDeliveries = asyncHandler(async (req, res) => {
-    // Find orders where 'deliveredBy' matches the logged-in user
+    // Find orders where 'deliveredBy' matches the current delivery partner's ID
     const orders = await Order.find({ deliveredBy: req.user._id })
         .populate("orderBy", "name number address")
         .sort({ createdAt: -1 });

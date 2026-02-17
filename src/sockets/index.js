@@ -10,7 +10,7 @@ export const initSocket = (server) => {
     }
   });
 
-  // 🔐 JWT authentication
+
   io.use(socketAuth);
 
   io.on("connection", (socket) => {
@@ -23,9 +23,7 @@ export const initSocket = (server) => {
     // Personal room
     socket.join(socket.user._id.toString());
 
-    /**
-     * JOIN ORDER ROOM
-     */
+    //JOIN ORDER ROOM
     socket.on("JOIN_ORDER", async ({ orderId }) => {
       try {
         await validateOrderAccess(orderId, socket.user);
@@ -41,9 +39,8 @@ export const initSocket = (server) => {
       }
     });
 
-    /**
-     * LIVE LOCATION UPDATE (DELIVERY ONLY)
-     */
+    //LIVE LOCATION UPDATE (DELIVERY ONLY)
+    
     socket.on("LOCATION_UPDATE", async ({ orderId, lat, lng }) => {
       try {
         // Only delivery partner can send GPS

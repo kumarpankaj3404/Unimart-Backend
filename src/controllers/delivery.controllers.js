@@ -5,9 +5,7 @@ import { Order } from "../models/order.models.js";
 import { User } from "../models/user.models.js";
 import { assignQueuedOrder } from "../services/orderQueue.service.js";
 
-/**
- * 📦 DELIVERY PARTNER MARKS ORDER AS DELIVERED
- */
+
 const markOrderDelivered = asyncHandler(async (req, res) => {
   const { orderId } = req.params;
   const deliveryPartnerId = req.user._id;
@@ -51,9 +49,7 @@ const markOrderDelivered = asyncHandler(async (req, res) => {
   );
 });
 
-/**
- * 🚴 DELIVERY PARTNER SETS AVAILABILITY
- */
+
 const setDeliveryAvailability = asyncHandler(async (req, res) => {
   const { isAvailable } = req.body;
 
@@ -69,7 +65,7 @@ const setDeliveryAvailability = asyncHandler(async (req, res) => {
   deliveryPartner.isAvailable = isAvailable;
   await deliveryPartner.save();
 
-  // 🔥 If becoming available → auto assign order
+  
   let assignedOrder = null;
   if (isAvailable) {
     assignedOrder = await assignQueuedOrder(req.user._id);
@@ -103,7 +99,7 @@ const updateLiveLocation = asyncHandler(async (req, res) => {
     throw new ApiError(400, "latitude, longitude, orderId required");
   }
 
-  // update delivery partner location
+  
   await User.findByIdAndUpdate(req.user._id, {
     location: {
       type: "Point",
@@ -116,7 +112,6 @@ const updateLiveLocation = asyncHandler(async (req, res) => {
 
   const io = req.app.get("io");
 
-  // emit ONLY to customer
   io.to(order.orderBy.toString()).emit(
     "DELIVERY_LOCATION_UPDATE",
     { latitude, longitude }

@@ -11,7 +11,7 @@ import {
 
 const router = Router();
 
-//SECURE ROUTES - require authentication
+//SECURE ROUTES 
 router.route('/create').post(verifyJWT, createNewOrder);
 router.route('/user-orders').get(verifyJWT, showOrderByUser);
 
