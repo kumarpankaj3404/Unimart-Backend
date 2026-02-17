@@ -1,4 +1,5 @@
 import { Server } from "socket.io";
+import { User } from "../models/user.models.js";
 import { socketAuth } from "../middleware/socketAuth.middleware.js";
 import { validateOrderAccess } from "../services/orderAuth.service.js";
 
@@ -40,7 +41,7 @@ export const initSocket = (server) => {
     });
 
     //LIVE LOCATION UPDATE (DELIVERY ONLY)
-    
+
     socket.on("LOCATION_UPDATE", async ({ orderId, lat, lng }) => {
       try {
         // Only delivery partner can send GPS
@@ -48,8 +49,20 @@ export const initSocket = (server) => {
           throw new Error("Only delivery partner can send location");
         }
 
+        if (!lat || !lng) {
+          throw new Error("Location coordinates required");
+        }
+
         // Validate order access
         await validateOrderAccess(orderId, socket.user);
+
+        // Save location to DB
+        await User.findByIdAndUpdate(socket.user._id, {
+          location: {
+            type: "Point",
+            coordinates: [lng, lat]
+          }
+        });
 
         // Broadcast to order room
         io.to(orderId).emit("DELIVERY_LOCATION_UPDATE", {
