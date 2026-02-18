@@ -3,57 +3,86 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { Order } from "../models/order.models.js";
 import { User } from "../models/user.models.js";
-import { assignQueuedOrder } from "../services/orderQueue.service.js";
+import { findAndRequestDriver, findNextOrderForDriver } from "../services/driver.service.js";
+
+
+
 
 
 const markOrderDelivered = asyncHandler(async (req, res) => {
   const { orderId } = req.params;
+
   const deliveryPartnerId = req.user._id;
 
-  const order = await Order.findById(orderId);
-  if (!order) throw new ApiError(404, "Order not found");
+  try {
+    const order = await Order.findById(orderId);
+    if (!order) throw new ApiError(404, "Order not found");
+    if (
+      !order.deliveredBy ||
+      order.deliveredBy.toString() !== deliveryPartnerId.toString()
+    ) {
+      throw new ApiError(403, "You are not allowed to complete this order");
+    }
+    order.status = "delivered";
+    order.timeline.push({
+      status: "delivered",
+      description: "Order delivered successfully"
+    });
+    await order.save();
 
-  if (
-    !order.deliveredBy ||
-    order.deliveredBy.toString() !== deliveryPartnerId.toString()
-  ) {
-    throw new ApiError(403, "You are not allowed to complete this order");
-  }
+    const deliveryPartner = await User.findById(deliveryPartnerId);
+    if (!deliveryPartner) {
+      throw new ApiError(404, "User not found");
+    }
+    deliveryPartner.isAvailable = true;
+    await deliveryPartner.save();
 
-  order.status = "delivered";
-  await order.save();
+    let nextOrder = null;
 
-  const deliveryPartner = await User.findById(deliveryPartnerId);
-  deliveryPartner.isAvailable = true;
-  await deliveryPartner.save();
+    try {
+      nextOrder = await findNextOrderForDriver(deliveryPartnerId);
 
-  // Try to assign next pending order
-  const nextOrder = await assignQueuedOrder(deliveryPartnerId);
+      const io = req.app.get("io");
 
-  if (nextOrder) {
-    const io = req.app.get("io");
-    // Notify Driver
-    io.to(deliveryPartnerId.toString()).emit(
-      "NEW_ORDER_ASSIGNED",
-      nextOrder
+      io.to(orderId).emit("ORDER_UPDATED", order);
+
+      if (nextOrder) {
+        // Notify Driver
+        io.to(deliveryPartnerId.toString()).emit(
+          "NEW_ORDER_ASSIGNED",
+          nextOrder
+        );
+        // Notify Customer that driver is assigned
+        if (nextOrder.orderBy) {
+          io.to(nextOrder.orderBy.toString()).emit(
+            "NEW_DELIVERY_ASSIGNMENT",
+            nextOrder
+          );
+        } else {
+          console.error("Next Order missing orderBy:", nextOrder._id);
+        }
+      }
+    } catch (error) {
+      console.error("Error in post-completion logic:", error);
+    }
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          deliveredOrder: order,
+          nextOrderAssigned: !!nextOrder
+        },
+        "Order delivered successfully"
+      )
     );
-     // Notify Customer that driver is assigned
-     io.to(nextOrder.orderBy.toString()).emit(
-      "NEW_DELIVERY_ASSIGNMENT",
-      nextOrder
-     );
+  } catch (error) {
+    console.error("CRITICAL ERROR in markOrderDelivered:", error);
+    // If it's an ApiError, rethrow it so standard handler catches it
+    if (error instanceof ApiError) throw error;
+    // Otherwise wrap it
+    throw new ApiError(500, "Internal Server Error during delivery completion");
   }
-
-  return res.status(200).json(
-    new ApiResponse(
-      200,
-      {
-        deliveredOrder: order,
-        nextOrderAssigned: !!nextOrder
-      },
-      "Order delivered successfully"
-    )
-  );
 });
 
 
@@ -72,17 +101,14 @@ const setDeliveryAvailability = asyncHandler(async (req, res) => {
   deliveryPartner.isAvailable = isAvailable;
   await deliveryPartner.save();
 
-  
-  let assignedOrder = null;
-  if (isAvailable) {
-    assignedOrder = await assignQueuedOrder(req.user._id);
 
-    if (assignedOrder) {
+  if (isAvailable) {
+    // Find valid pending order to Request (simple logic: find one pending order)
+    // In real app, you'd find nearest pending order
+    const pendingOrder = await Order.findOne({ status: "pending", requestedDriver: null });
+    if (pendingOrder) {
       const io = req.app.get("io");
-      io.to(req.user._id.toString()).emit(
-        "NEW_ORDER_ASSIGNED",
-        assignedOrder
-      );
+      await findAndRequestDriver(pendingOrder._id, io);
     }
   }
 
@@ -90,8 +116,7 @@ const setDeliveryAvailability = asyncHandler(async (req, res) => {
     new ApiResponse(
       200,
       {
-        isAvailable,
-        assignedOrder
+        isAvailable
       },
       "Availability updated successfully"
     )
@@ -106,7 +131,7 @@ const updateLiveLocation = asyncHandler(async (req, res) => {
     throw new ApiError(400, "latitude, longitude, orderId required");
   }
 
-  
+
   await User.findByIdAndUpdate(req.user._id, {
     location: {
       type: "Point",
@@ -129,9 +154,37 @@ const updateLiveLocation = asyncHandler(async (req, res) => {
   );
 });
 
+const rejectOrder = asyncHandler(async (req, res) => {
+  const { orderId } = req.params;
+  const deliveryPartnerId = req.user._id;
+
+  const order = await Order.findById(orderId);
+  if (!order) throw new ApiError(404, "Order not found");
+
+  if (order.requestedDriver && order.requestedDriver.toString() !== deliveryPartnerId.toString()) {
+    throw new ApiError(400, "You are not the requested driver for this order");
+  }
+
+  // Add to rejected list
+  order.rejectedDrivers.push(deliveryPartnerId);
+
+  // Clear current request
+  order.requestedDriver = null;
+  await order.save();
+
+  // Trigger search for next driver
+  const io = req.app.get("io");
+  await findAndRequestDriver(orderId, io);
+
+  return res.status(200).json(
+    new ApiResponse(200, null, "Order rejected. Searching for next driver.")
+  );
+});
+
 
 export {
   markOrderDelivered,
   setDeliveryAvailability,
-  updateLiveLocation
+  updateLiveLocation,
+  rejectOrder
 };

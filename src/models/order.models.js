@@ -43,6 +43,16 @@ const orderSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: "User"
   },
+  requestedDriver: {
+    type: Schema.Types.ObjectId,
+    ref: "User"
+  },
+  rejectedDrivers: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: "User"
+    }
+  ],
   status: {
     type: String,
     enum: ["pending", "processed", "shipped", "delivered", "cancelled"],
@@ -70,6 +80,32 @@ const orderSchema = new Schema({
       type: Number,
       required: true
     }
+  },
+  deliveryOtp: {
+    type: String
+  },
+  timeline: [
+    {
+      status: {
+        type: String,
+        enum: ["pending", "processed", "shipped", "delivered", "cancelled"]
+      },
+      timestamp: {
+        type: Date,
+        default: Date.now
+      },
+      description: {
+        type: String
+      }
+    }
+  ],
+  isRated: {
+    type: Boolean,
+    default: false
+  },
+  rating: {
+    type: Number,
+    default: 0
   }
 }, { timestamps: true });
 

@@ -56,19 +56,17 @@ const userSchema = new Schema({
         required: true,
         default: "user"
     },
-    
+
     // Update address field
     address: {
-        type: [addressSchema], 
+        type: [addressSchema],
         default: []
     },
 
     refreshToken: { type: String },
-    isValidated: { type: Boolean, default: false },
-    otp: { type: String },
-    otpExpiry: { type: Date },
+    isValidated: { type: Boolean, default: true },
     isAvailable: { type: Boolean, default: true },
-    
+
     // User's CURRENT active location 
     location: {
         type: {

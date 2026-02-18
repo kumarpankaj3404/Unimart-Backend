@@ -65,6 +65,7 @@ export const initSocket = (server) => {
         });
 
         // Broadcast to order room
+        console.log(`📡 Broadcasting DELIVERY_LOCATION_UPDATE to room ${orderId}:`, { lat, lng });
         io.to(orderId).emit("DELIVERY_LOCATION_UPDATE", {
           orderId,
           lat,

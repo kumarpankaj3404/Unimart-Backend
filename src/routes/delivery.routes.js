@@ -3,7 +3,8 @@ import { verifyJWT } from "../middleware/auth.middleware.js";
 import {
   setDeliveryAvailability,
   markOrderDelivered,
-  updateLiveLocation
+  updateLiveLocation,
+  rejectOrder
 } from "../controllers/delivery.controllers.js";
 import checkRole from "../middleware/checkRole.middleware.js";
 
@@ -30,6 +31,14 @@ router.post(
   verifyJWT,
   checkRole(["delivery"]),
   updateLiveLocation
+);
+
+// REJECT ORDER
+router.post(
+  "/reject/:orderId",
+  verifyJWT,
+  checkRole(["delivery"]),
+  rejectOrder
 );
 
 export default router;

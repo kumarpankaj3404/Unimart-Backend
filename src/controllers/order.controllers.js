@@ -3,6 +3,7 @@ import { User } from "../models/user.models.js";
 import asyncHandler from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
+import { findAndRequestDriver } from "../services/driver.service.js";
 
 const createNewOrder = asyncHandler(async (req, res) => {
 
@@ -29,29 +30,13 @@ const createNewOrder = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Something went wrong while creating order");
     }
 
-    const deliveryPartner = await User.findOne({
-        role: "delivery",
-        isAvailable: true
-    });
+    const io = req.app.get("io");
 
-    let deliveryAssigned = false;
+    // Trigger Driver Request Logic
+    await findAndRequestDriver(newOrder._id, io);
 
-    if (deliveryPartner) {
-        newOrder.deliveredBy = deliveryPartner._id;
-        newOrder.status = "processed";
-        await newOrder.save();
-
-        deliveryPartner.isAvailable = false;
-        await deliveryPartner.save();
-
-        deliveryAssigned = true;
-
-        const io = req.app.get("io");
-        io.to(deliveryPartner._id.toString()).emit(
-            "NEW_DELIVERY_ASSIGNMENT",
-            newOrder
-        );
-    }
+    // Initial response doesn't have a deliveryAssigned (it's pending request)
+    const deliveryAssigned = false;
 
     return res
         .status(201)
@@ -77,17 +62,28 @@ const changeStatus = asyncHandler(async (req, res) => {
         throw new ApiError(400, "OrderID or newStatus is required");
     }
 
-    const updateOrder = await Order.findByIdAndUpdate(
-        orderId,
-        {
-            status: newStatus
-        },
-        { new: true }
-    )
+    const order = await Order.findById(orderId);
+    if (!order) {
+        throw new ApiError(400, "Can't find order by Id provided");
+    }
+
+
+
+    order.status = newStatus;
+    order.timeline.push({
+        status: newStatus,
+        description: `Order status updated to ${newStatus}`
+    });
+
+    const updateOrder = await order.save();
 
     if (!updateOrder) {
         throw new ApiError(400, "Can't find order by Id provided")
     }
+
+    // Emit Real-time Update
+    const io = req.app.get("io");
+    io.to(orderId).emit("ORDER_UPDATED", updateOrder);
 
     return res
         .status(200)
@@ -114,6 +110,14 @@ const showOrderByUser = asyncHandler(async (req, res) => {
     const userId = req.user._id;
 
     const userOrders = await Order.find({ orderBy: userId }).sort({ createdAt: -1 });
+    console.log(`FETCH_ORDERS: Found ${userOrders.length} orders for user ${userId}`);
+    if (userOrders.length > 0) {
+        console.log("FETCH_ORDERS: Sample order rating status:", {
+            id: userOrders[0]._id,
+            isRated: userOrders[0].isRated,
+            rating: userOrders[0].rating
+        });
+    }
 
     if (!userOrders) {
         throw new ApiError(500, "Something went wrong while fetching orders");
@@ -165,6 +169,11 @@ const acceptOrder = asyncHandler(async (req, res) => {
 
     order.deliveredBy = req.user._id;
     order.status = "processed";
+
+    order.timeline.push({
+        status: "processed",
+        description: "Delivery partner accepted the order"
+    });
     await order.save();
 
     // Notify the customer that driver is assigned
@@ -172,7 +181,7 @@ const acceptOrder = asyncHandler(async (req, res) => {
     if (order.orderBy) {
         io.to(order.orderBy.toString()).emit("ORDER_UPDATED", {
             ...order.toObject(),
-            status: "processed" 
+            status: "processed"
         });
     }
 
