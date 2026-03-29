@@ -4,8 +4,24 @@ import cookieParser from "cookie-parser";
 
 const app = express();
 
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://unimart-asap.vercel.app',
+    process.env.CORS_ORIGIN,
+].filter(Boolean);
+
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    origin: (origin, callback) => {
+        // Allow non-browser clients (Postman/cURL/mobile apps) with no origin header.
+        if (!origin) return callback(null, true);
+
+        if (!allowedOrigins.includes(origin)) {
+            return callback(new Error('The CORS policy for this site does not allow access from the specified Origin.'), false);
+        }
+
+        return callback(null, true);
+    },
     credentials: true,
 }));
 
