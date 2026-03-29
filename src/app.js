@@ -5,10 +5,10 @@ import cookieParser from "cookie-parser";
 const app = express();
 
 const allowedOrigins = [
-    'http://localhost:5173',
+    'https://unimart.pankajkumar.app',
     'http://localhost:3000',
     'https://unimart-asap.vercel.app',
-    process.env.CORS_ORIGIN,
+     process.env.CORS_ORIGIN,
 ].filter(Boolean);
 
 app.use(cors({
